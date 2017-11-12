@@ -27,7 +27,7 @@ from . import util
 from . import bitcoin
 from .bitcoin import *
 
-MAX_TARGET = 0x00000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+MAX_TARGET = 0x00000000FFFF0000000000000000000000000000000000000000000000000000
 
 def serialize_header(res):
     s = int_to_hex(res.get('version'), 4) \
@@ -56,14 +56,6 @@ def hash_header(header):
     if header.get('prev_block_hash') is None:
         header['prev_block_hash'] = '00'*32
     return hash_encode(Hash(bfh(serialize_header(header))))
-
-
-
-
-
-
-
-
 
 
 blockchains = {}
@@ -151,12 +143,12 @@ class Blockchain(util.PrintError):
         p = self.path()
         self._size = os.path.getsize(p)//80 if os.path.exists(p) else 0
 
-    def verify_header(self, header, prev_header, bits, target,  height = -1):
+    def verify_header(self, header, prev_header, bits, target):
         prev_hash = hash_header(prev_header)
         _hash = hash_header(header)
         if prev_hash != header.get('prev_block_hash'):
             raise BaseException("prev hash mismatch: %s vs %s" % (prev_hash, header.get('prev_block_hash')))
-        if bitcoin.NetworkConstants.TESTNET:
+        if bitcoin.TESTNET:
             return
         if bits != header.get('bits'):
             raise BaseException("bits mismatch: %s vs %s" % (bits, header.get('bits')))
@@ -272,38 +264,11 @@ class Blockchain(util.PrintError):
         h = self.local_height
         return sum([self.BIP9(h-i, 2) for i in range(N)])*10000/N/100.
 
-    def get_target(self, index):
-        if bitcoin.NetworkConstants.TESTNET:
+    def get_target(self, height, chain=None):
+        if bitcoin.TESTNET:
             return 0, 0
-        if index == 0:
-            return 0x1e0ffff0, 0x00000FFFF0000000000000000000000000000000000000000000000000000000
-        first = self.read_header((index-1) * 2016 - 1 if index > 1 else 0)
-        last = self.read_header(index*2016 - 1)
-        # bits to target
-        bits = last.get('bits')
-        bitsN = (bits >> 24) & 0xff
-        if not (bitsN >= 0x03 and bitsN <= 0x1d):
-            raise BaseException("First part of bits should be in [0x03, 0x1e]")
-        bitsBase = bits & 0xffffff
-        if not (bitsBase >= 0x8000 and bitsBase <= 0x7fffff):
-            raise BaseException("Second part of bits should be in [0x8000, 0x7fffff]")
-        target = bitsBase << (8 * (bitsN-3))
-        # new target
-        nActualTimespan = last.get('timestamp') - first.get('timestamp')
-        nTargetTimespan = 84 * 60 * 60
-        nActualTimespan = max(nActualTimespan, nTargetTimespan // 4)
-        nActualTimespan = min(nActualTimespan, nTargetTimespan * 4)
-        new_target = min(MAX_TARGET, (target * nActualTimespan) // nTargetTimespan)
-        # convert new target to bits
-        c = ("%064x" % new_target)[2:]
-        while c[:2] == '00' and len(c) > 6:
-            c = c[2:]
-        bitsN, bitsBase = len(c) // 2, int('0x' + c[:6], 16)
-        if bitsBase >= 0x800000:
-            bitsN += 1
-            bitsBase >>= 8
-        new_bits = bitsN << 24 | bitsBase
-        return new_bits, bitsBase << (8 * (bitsN - 3))
+        else:
+            return target.selectAlgo(self, height, chain)
 
     def can_connect(self, header, check_height=True):
         height = header['block_height']
@@ -319,14 +284,17 @@ class Blockchain(util.PrintError):
             return False
         headers = {}
         headers[header.get('block_height')] = header
-        bits, target = self.get_target(height, header, prev_header)
-        self.verify_header(header, prev_header, bits, target)
-        prev_header = header
-        
+        bits, target = self.get_target(height, headers)
+        try:
+            self.verify_header(header, previous_header, bits, target)
+        except:
+            return False
+        return True
+
     def connect_chunk(self, idx, hexdata):
         try:
             data = bfh(hexdata)
-            #self.verify_chunk(idx, data)
+            self.verify_chunk(idx, data)
             #self.print_error("validated chunk %d" % idx)
             self.save_chunk(idx, data)
             return True
