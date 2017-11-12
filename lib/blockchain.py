@@ -27,7 +27,7 @@ from . import util
 from . import bitcoin
 from .bitcoin import *
 
-MAX_TARGET = 0x00000000FFFF0000000000000000000000000000000000000000000000000000
+MAX_TARGET = 0x00000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 def serialize_header(res):
     s = int_to_hex(res.get('version'), 4) \
@@ -310,17 +310,17 @@ class Blockchain(util.PrintError):
         if prev_hash != header.get('prev_block_hash'):
             return False
         bits, target = self.get_target(height // 2016)
-        #try:
-            #self.verify_header(header, previous_header, bits, target)
-        #except:
-            #return False
+        try:
+            self.verify_header(header, previous_header, bits, target)
+        except:
+            return False
         return True
 
     def connect_chunk(self, idx, hexdata):
         try:
             data = bfh(hexdata)
-            #self.verify_chunk(idx, data)
-            self.print_error("validated chunk %d" % idx)
+            self.verify_chunk(idx, data)
+            #self.print_error("validated chunk %d" % idx)
             self.save_chunk(idx, data)
             return True
         except BaseException as e:
