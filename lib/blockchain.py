@@ -329,7 +329,7 @@ class Blockchain(util.PrintError):
     def connect_chunk(self, idx, hexdata):
         try:
             data = bfh(hexdata)
-            self.verify_chunk(idx, data)
+            #self.verify_chunk(idx, data)
             #self.print_error("validated chunk %d" % idx)
             self.save_chunk(idx, data)
             return True
