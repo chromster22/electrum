@@ -310,7 +310,7 @@ class Blockchain(util.PrintError):
         if prev_hash != header.get('prev_block_hash'):
             return False
         bits, target = self.get_target(height // 2016)
-        try:
+        #try:
             #self.verify_header(header, previous_header, bits, target)
         #except:
             #return False
