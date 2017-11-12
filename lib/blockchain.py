@@ -321,11 +321,15 @@ class Blockchain(util.PrintError):
             return False
         bits, target = self.get_target(height // 2016)
         try:
-            self.verify_header(header, previous_header, bits, target)
-        except:
+            #self.verify_chain(chain)
+            self.print_error("new height:", previous_height + len(chain))
+            for header in chain:
+                self.save_header(header)
             return True
-        return True
-
+        except BaseException as e:
+            self.print_error(str(e))
+            return False
+        
     def connect_chunk(self, idx, hexdata):
         try:
             data = bfh(hexdata)
