@@ -310,23 +310,18 @@ class Blockchain(util.PrintError):
         if check_height and self.height() != height - 1:
             return False
         if height == 0:
-            return hash_header(header) == bitcoin.NetworkConstants.GENESIS
+            return hash_header(header) == bitcoin.GENESIS
         previous_header = self.read_header(height -1)
         if not previous_header:
             return False
         prev_hash = hash_header(previous_header)
         if prev_hash != header.get('prev_block_hash'):
             return False
-        bits, target = self.get_target(height // 2016)
-        try:
-            #self.verify_chain(chain)
-            self.print_error("new height:", previous_height + len(chain))
-            for header in chain:
-                self.save_header(header)
-            return True
-        except BaseException as e:
-            self.print_error(str(e))
-            return False
+        headers = {}
+        headers[header.get('block_height')] = header
+        bits, target = self.get_target(height, header, prev_header)
+        self.verify_header(header, prev_header, bits, target)
+        prev_header = header
         
     def connect_chunk(self, idx, hexdata):
         try:
