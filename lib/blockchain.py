@@ -62,8 +62,6 @@ def hash_header(header):
 
 
 
-def _hash_header(header):
-    return hash_encode(getHash(bfh(serialize_header(header))))
 
 
 
@@ -153,7 +151,7 @@ class Blockchain(util.PrintError):
         p = self.path()
         self._size = os.path.getsize(p)//80 if os.path.exists(p) else 0
 
-    def verify_header(self, header, prev_header, bits, target):
+    def verify_header(self, header, prev_header, bits, target,  height = -1):
         prev_hash = hash_header(prev_header)
         _hash = hash_header(header)
         if prev_hash != header.get('prev_block_hash'):
